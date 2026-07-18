@@ -24,10 +24,10 @@ class ASREngine(Protocol):
         """
         ...
 
-    async def finalize(self, audio_bytes: bytes = b"") -> tuple[str, str]:
+    async def finalize(self, audio_bytes: bytes = b"") -> tuple[str, str] | tuple[str, str, dict]:
         """
         Transcribe the snapshotted utterance audio (taken via snapshot_audio()).
-        Returns a tuple of (final_text, detected_lang).
+        Returns (final_text, detected_lang), optionally with ASR metadata.
         """
         ...
 

@@ -88,6 +88,8 @@ class RemoteASR(ASREngine):
             logger.info("RemoteASR connected (lang=%s).", self.lang)
         except Exception as e:
             logger.error("RemoteASR connect failed: %s", e)
+            self._clear_send_queue()
+            self._fail_pending_finals()
         finally:
             self._connect_task = None
 
@@ -109,12 +111,44 @@ class RemoteASR(ASREngine):
             return
         self._connected = False
         self._connected_event.clear()
+        self._ws = None
+        self._clear_send_queue()
         # Fail any pending finals so finalize() doesn't hang forever.
+        self._fail_pending_finals()
+        logger.warning("RemoteASR disconnected; will reconnect on next use.")
+
+    def _fail_pending_finals(self):
         while self._pending_finals:
             fut = self._pending_finals.popleft()
             if not fut.done():
                 fut.set_result(("", self.lang))
-        logger.warning("RemoteASR disconnected; will reconnect on next use.")
+
+    def _clear_send_queue(self):
+        cleared = 0
+        while True:
+            try:
+                self._send_q.get_nowait()
+                cleared += 1
+            except asyncio.QueueEmpty:
+                break
+        if cleared:
+            logger.warning("RemoteASR cleared %d stale queued messages after disconnect.", cleared)
+
+    async def close(self):
+        for task in (self._writer_task, self._reader_task, self._connect_task):
+            if task and not task.done():
+                task.cancel()
+        self._clear_send_queue()
+        self._fail_pending_finals()
+        ws = self._ws
+        self._ws = None
+        self._connected = False
+        self._connected_event.clear()
+        if ws is not None:
+            try:
+                await ws.close()
+            except Exception:
+                pass
 
     # ---- writer / reader ----
 
@@ -157,7 +191,11 @@ class RemoteASR(ASREngine):
                         logger.warning("RemoteASR final without pending future")
                         continue
                     if not fut.done():
-                        fut.set_result((data.get("text", ""), data.get("lang", self.lang)))
+                        fut.set_result((
+                            data.get("text", ""),
+                            data.get("lang", self.lang),
+                            data.get("metadata", {}),
+                        ))
         except Exception as e:
             logger.warning("RemoteASR reader loop ended: %s", e)
         self._handle_disconnect()
@@ -190,6 +228,8 @@ class RemoteASR(ASREngine):
     async def finalize(self, audio_bytes: bytes = b"") -> Tuple[str, str]:
         if not await self._ensure_connected_blocking():
             logger.error("RemoteASR not connected at finalize; returning empty.")
+            self._clear_send_queue()
+            self._fail_pending_finals()
             return "", self.lang
         if not self._pending_finals:
             loop = asyncio.get_event_loop()

@@ -43,9 +43,13 @@ class VAD:
         if len(audio_data) == 0:
             return "silence"
 
-        # 2. Simple Gain Control (Automatic Leveling)
+        # 2. Simple Gain Control (Automatic Leveling). Do not amplify very low
+        # energy noise into speech; that path produced false utterances.
         max_val = np.max(np.abs(audio_data))
-        if 0 < max_val < 0.1:
+        rms = float(np.sqrt(np.mean(np.square(audio_data))))
+        if not self.is_speaking and rms < 0.003:
+            return "silence"
+        if 0.01 <= max_val < 0.1:
             audio_data = audio_data * (0.1 / max_val)
 
         # 3. Windowing for Silero (MUST be exactly 512 samples for 16kHz)

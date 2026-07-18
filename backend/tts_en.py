@@ -23,6 +23,7 @@ class PiperTTSEngine(TTSEngine):
                 self._native_sr = self.voice.config.sample_rate
             except Exception:
                 self._native_sr = 22050  # fallback; thực tế dùng audio_chunk.sample_rate
+            self.sample_rate = self._native_sr
             print(f"Successfully loaded Piper TTS model: {model_path}")
         except Exception as e:
             print(f"Warning: Could not load Piper model from {model_path}: {e}")
@@ -49,10 +50,13 @@ class PiperTTSEngine(TTSEngine):
             chunks = await loop.run_in_executor(None, generate_audio)
             for audio_chunk in chunks:
                 pcm16_native = audio_chunk.audio_int16_bytes
-                pcm16_48k = await loop.run_in_executor(
-                    None, resample_pcm16, pcm16_native, audio_chunk.sample_rate, self.sample_rate
-                )
-                yield pcm16_48k
+                if audio_chunk.sample_rate == self.sample_rate:
+                    yield pcm16_native
+                else:
+                    pcm16_out = await loop.run_in_executor(
+                        None, resample_pcm16, pcm16_native, audio_chunk.sample_rate, self.sample_rate
+                    )
+                    yield pcm16_out
         except Exception as e:
             print(f"Error during Piper synthesis: {e}")
             yield b"\x00\x00" * 9600

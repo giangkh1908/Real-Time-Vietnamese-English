@@ -15,6 +15,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=True)
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+for noisy_logger in ("websockets.client", "httpcore", "httpx", "piper.voice"):
+    logging.getLogger(noisy_logger).setLevel(logging.WARNING)
 
 # Global engines - loaded ONCE at startup
 engines: Engines | None = None

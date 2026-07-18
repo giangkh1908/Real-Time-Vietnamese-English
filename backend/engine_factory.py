@@ -45,11 +45,12 @@ def build_engines() -> Engines:
     # colab_asr_gpu.ipynb) via WebSocket. VAD/MT/TTS still run locally.
     remote_asr_url = os.getenv("ASR_REMOTE_URL")
     if remote_asr_url:
-        from .asr_remote import RemoteASR
         from .llm_engine import OllamaTranslationEngine
+        # SessionState creates one RemoteASR per browser session/language. Keep
+        # placeholders here so no shared RemoteASR state is accidentally reused.
         return Engines(
-            asr_vi=RemoteASR(lang="vi", url=remote_asr_url),
-            asr_en=RemoteASR(lang="en", url=remote_asr_url),
+            asr_vi=FakeASR(),
+            asr_en=FakeASR(),
             mt=OllamaTranslationEngine(),
             tts=_piper_tts(),
             vad=VADModel(),
