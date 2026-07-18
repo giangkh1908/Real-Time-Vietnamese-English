@@ -275,6 +275,18 @@ class SessionState:
                 if not final_text or not final_text.strip():
                     return
 
+                # Drop Whisper trailing-audio hallucination: khi đoạn nhạc/junk ở cuối
+                # bị VAD nhặt thành utterance mới, Whisper thường bidiện ra câu giống
+                # utterance trước (decoder loop trên audio low-info). Bỏ qua final
+                # trùng y hệt utterance liền trước — self-repetition hợp lệ liên tiếp
+                # là cực hiếm nên an toàn.
+                if self.utterances:
+                    last_text = list(self.utterances.values())[-1].get("text", "")
+                    if last_text and final_text.strip() == last_text.strip():
+                        logger.info("[%s] Drop duplicate final (hallucination): %r",
+                                    self.session_id, final_text[:80])
+                        return
+
                 utt_id = utt_id or self._current_utt_id or str(uuid.uuid4())
                 tts_utt_id = utt_id
 

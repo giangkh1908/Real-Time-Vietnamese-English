@@ -25,6 +25,13 @@ import statistics
 from pathlib import Path
 from datetime import datetime
 
+# Windows console mặc định cp1252 -> lỗi Unicode khi in dấu tiếng Việt / box-drawing.
+# Ép stdout UTF-8 để report hiển thị đúng dấu (thay vì ASCII replace '?' như trước).
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 # Add backend to path (không import, chỉ để compatible nếu cần)
 sys.path.insert(0, str(Path(__file__).parent / "backend"))
 
@@ -195,7 +202,7 @@ class LatencyTracker:
         agg = self.aggregate()
 
         def p(s):
-            print(s.encode("ascii", "replace").decode("ascii"))
+            print(s)
 
         p("\n" + "=" * 78)
         p("LATENCY REPORT (per-utterance)")

@@ -39,6 +39,8 @@ from .interfaces import ASREngine
 logger = logging.getLogger("asr_remote")
 
 CONNECT_TIMEOUT = 15  # seconds
+# beam_size=1 greedy: finalize ~2-5s với buffer 6s trên T4 (Colab transcribe cả buffer +
+# fallback về partial nếu rỗng). 30s headroom an toàn; nếu hang thì block tối đa 30s.
 FINALIZE_TIMEOUT = 30  # seconds
 
 

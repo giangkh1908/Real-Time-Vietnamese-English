@@ -1,11 +1,20 @@
+# === Runtime pipeline (local backend: VAD + remote ASR/MT client + Piper TTS) ===
 fastapi[standard]
 uvicorn[standard]
 numpy
-torch
-faster-whisper
+torch                       # Silero VAD (torch.hub.load snakers4/silero-vad)
+faster-whisper              # ASR local (nhánh local-CPU khi ASR_REMOTE_URL trống)
+httpx                       # Ollama /api/chat (llm_engine) + proxy Colab
+websockets                  # RemoteASR WS client (asr_remote)
+python-dotenv               # load .env (main.py)
+piper-tts                   # Piper TTS vi+en (piper1-gpl / OHF-Voice) — kéo onnxruntime
+
+# === Local-MT thay thế (tùy chọn, không wire mặc định) ===
+# mt_real.py dùng transformers (MarianMT) — engine_factory mặc định dùng Ollama,
+# để 2 dòng này cho ai muốn chạy MT local không qua Ollama.
 transformers
 sentencepiece
-httpx
-websockets
-python-dotenv
-piper-tts
+
+# === Optional: test & download helpers (không cần cho app chính) ===
+av                          # test_backend_local.py: decode .m4a đo latency
+huggingface_hub             # download_*.py: tải model từ HF (whisper/piper/phowhisper)
